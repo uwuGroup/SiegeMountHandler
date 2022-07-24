@@ -47,6 +47,9 @@ public class MountHandler {
 
         PacketContainer destroyPacket = new PacketContainer(PacketType.Play.Server.ENTITY_DESTROY);
         List<Integer> eIDList = entityIdUUIDMap.get(p.getUniqueId());
+        if (eIDList == null){
+            return;
+        }
         destroyPacket.getIntLists().write(0, eIDList);
 
         p.sendMessage(p.getName() + " remove mount to all");

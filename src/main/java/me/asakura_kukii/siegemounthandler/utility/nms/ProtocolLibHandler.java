@@ -13,6 +13,7 @@ public class ProtocolLibHandler {
             }
             protocolManager.removePacketListeners(me.asakura_kukii.siegemounthandler.SiegeMountHandler.pluginInstance);
             protocolManager.addPacketListener(new SiegePacketAdapter());
+            protocolManager.addPacketListener(new LoadChunkHandler());
         }
     }
 }
