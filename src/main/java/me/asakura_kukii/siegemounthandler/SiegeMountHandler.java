@@ -49,18 +49,18 @@ public class SiegeMountHandler extends JavaPlugin {
 			updaterRegister.get(pluginInstance).cancel();
 			updaterRegister.remove(pluginInstance);
 		}
-		updaterRegister.put(pluginInstance, new BukkitRunnable() {
-
-			@Override
-			public void run() {
-
-				for (Player p : Bukkit.getOnlinePlayers()) {
-					me.asakura_kukii.siegemounthandler.handler.MountHandler.orientMount(p);
-				}
-
-
-			}
-		}.runTaskTimer(me.asakura_kukii.siegemounthandler.SiegeMountHandler.pluginInstance, 0, 0));
+//		updaterRegister.put(pluginInstance, new BukkitRunnable() {
+//
+//			@Override
+//			public void run() {
+//
+//				for (Player p : Bukkit.getOnlinePlayers()) {
+//					me.asakura_kukii.siegemounthandler.handler.MountHandler.orientMount(p);
+//				}
+//
+//
+//			}
+//		}.runTaskTimer(me.asakura_kukii.siegemounthandler.SiegeMountHandler.pluginInstance, 0, 0));
 	}
 
 }
