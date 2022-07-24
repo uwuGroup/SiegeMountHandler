@@ -25,13 +25,13 @@ public class SiegeMountHandlerListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-        MountHandler.refreshMount(p);
+        MountHandler.removeMount(p);
+        MountHandler.clearMountCache(p);
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         Player p = e.getEntity();
-        MountHandler.refreshMount(p);
     }
 
     @EventHandler

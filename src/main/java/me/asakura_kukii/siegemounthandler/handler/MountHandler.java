@@ -9,6 +9,8 @@ import com.comphenix.protocol.wrappers.Pair;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 import com.comphenix.protocol.wrappers.WrappedWatchableObject;
 import com.google.common.collect.Lists;
+import me.asakura_kukii.siegemounthandler.data.ConfigData;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
@@ -18,10 +20,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class MountHandler {
     public static ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
@@ -29,47 +28,38 @@ public class MountHandler {
     public static HashMap<UUID, List<Integer>> entityIdUUIDMap = new HashMap<>();
     public static HashMap<UUID, List<PacketContainer>> generatePacketContainerMap = new HashMap<>();
     public static List<Integer> occupiedEntityIdList = new ArrayList<>();
+    public static HashMap<UUID, List<ItemStack>> itemStackUUIDMap = new HashMap<>();
+    public static HashMap<UUID, List<UUID>> previousPlayerAroundMap = new HashMap<>();
 
-
-    //TODO:REFRESH IS NOT WORKING, DESTROY PACKETS UNSTABLE WHEN DISCONNECTING
-    //TODO:ADD PLAYER-ITEMSTACK HASHMAP FOR CHANGING MOUNTING MODELS
-
-    public static void refreshMount(Player p) {
-        if (protocolManager == null) {
-            protocolManager = ProtocolLibrary.getProtocolManager();
+    public static void clearMountCache(Player p) {
+        if (entityIdUUIDMap.containsKey(p.getUniqueId())) {
+            List<Integer> entityIdList = entityIdUUIDMap.get(p.getUniqueId());
+            occupiedEntityIdList.removeAll(entityIdList);
         }
-
-        for (int i = 0; i < 2; i++) {
-            PacketContainer destroyPacket = new PacketContainer(PacketType.Play.Server.ENTITY_DESTROY);
-            int eID = entityIdUUIDMap.get(p.getUniqueId()).get(i);
-            destroyPacket.getIntegers().write(0, eID);
-
-            try {
-                protocolManager.sendServerPacket(p, destroyPacket);
-                for (Entity target : p.getNearbyEntities(32, 32, 32)) {
-                    if (target instanceof Player) {
-                        protocolManager.sendServerPacket((Player) target, destroyPacket);
-                    }
-                }
-                occupiedEntityIdList.remove(eID);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
-        }
-
         entityIdUUIDMap.remove(p.getUniqueId());
-        generatePacketContainerMap.remove(p.getUniqueId());
+        previousPlayerAroundMap.remove(p.getUniqueId());
     }
 
-    public static void generateMount(Player p) {
-
-        if (entityIdUUIDMap.containsKey(p.getUniqueId())) {
-            refreshMount(p);
-        }
-
-
+    public static void removeMount(Player p) {
         if (protocolManager == null) {
             protocolManager = ProtocolLibrary.getProtocolManager();
+        }
+
+        PacketContainer destroyPacket = new PacketContainer(PacketType.Play.Server.ENTITY_DESTROY);
+        List<Integer> eIDList = entityIdUUIDMap.get(p.getUniqueId());
+        destroyPacket.getIntLists().write(0, eIDList);
+
+        p.sendMessage(p.getName() + " remove mount to all");
+        protocolManager.broadcastServerPacket(destroyPacket);
+    }
+
+    public static void regenerateMount(Player p) {
+        if (protocolManager == null) {
+            protocolManager = ProtocolLibrary.getProtocolManager();
+        }
+
+        if (entityIdUUIDMap.containsKey(p.getUniqueId())) {
+            removeMount(p);
         }
 
         List<Integer> entityIDList = new ArrayList<>();
@@ -102,50 +92,34 @@ public class MountHandler {
             List<Pair<EnumWrappers.ItemSlot, ItemStack>> list = new ArrayList<>();
             ItemStack boatItem = new ItemStack(Material.COOKIE);
             ItemMeta iM = boatItem.getItemMeta();
-            iM.setCustomModelData(i+1);
+            iM.setCustomModelData(i + 1);
             boatItem.setItemMeta(iM);
             list.add(new Pair<>(EnumWrappers.ItemSlot.HEAD, boatItem));
             equipPacket.getSlotStackPairLists().write(0, list);
 
 
+            p.sendMessage(p.getName() + " gen");
 
-            try {
-                protocolManager.sendServerPacket(p, spawnPacket);
-                protocolManager.sendServerPacket(p, metaPacket);
-                protocolManager.sendServerPacket(p, equipPacket);
-                for (Entity target : p.getNearbyEntities(32, 32, 32)) {
-                    if (target instanceof Player) {
-                        protocolManager.sendServerPacket((Player) target, spawnPacket);
-                        protocolManager.sendServerPacket((Player) target, metaPacket);
-                        protocolManager.sendServerPacket((Player) target, equipPacket);
-                    }
-                }
-                entityIDList.add(entityID);
-                occupiedEntityIdList.add(entityID);
-                pCL.add(spawnPacket);
-                pCL.add(metaPacket);
-                pCL.add(equipPacket);
 
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            }
+            protocolManager.broadcastServerPacket(spawnPacket);
+            protocolManager.broadcastServerPacket(metaPacket);
+            protocolManager.broadcastServerPacket(equipPacket);
+
+
+            entityIDList.add(entityID);
+            occupiedEntityIdList.add(entityID);
+            pCL.add(spawnPacket);
+            pCL.add(metaPacket);
+            pCL.add(equipPacket);
+
         }
 
         PacketContainer mountPacket = new PacketContainer(PacketType.Play.Server.MOUNT);
         mountPacket.getIntegers().write(0, p.getEntityId());
         mountPacket.getIntegerArrays().write(0, new int[]{entityIDList.get(0), entityIDList.get(1)});
 
-        try {
-            protocolManager.sendServerPacket(p, mountPacket);
-            for (Entity target : p.getNearbyEntities(32, 32, 32)) {
-                if (target instanceof Player) {
-                    protocolManager.sendServerPacket((Player) target, mountPacket);
-                }
-            }
-            pCL.add(mountPacket);
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        }
+        protocolManager.broadcastServerPacket(mountPacket);
+        pCL.add(mountPacket);
 
 
         entityIdUUIDMap.put(p.getUniqueId(), entityIDList);
@@ -159,7 +133,7 @@ public class MountHandler {
         if (entityIdUUIDMap.containsKey(p.getUniqueId())) {
 
             for (int i = 0; i < 2; i ++) {
-                PacketContainer rotateHeadPacket = new PacketContainer(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
+                PacketContainer rotateHeadPacket = protocolManager.createPacket(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
                 rotateHeadPacket.getIntegers().write(0, entityIdUUIDMap.get(p.getUniqueId()).get(i));
                 if (p.getVehicle() != null && p.getVehicle() instanceof Boat) {
                     rotateHeadPacket.getBytes().write(0, (byte) (p.getVehicle().getLocation().getYaw() * 256 / 360));
@@ -167,7 +141,7 @@ public class MountHandler {
                     rotateHeadPacket.getBytes().write(0, (byte) (p.getLocation().getYaw() * 256 / 360));
                 }
 
-                PacketContainer rotateBodyPacket = new PacketContainer(PacketType.Play.Server.ENTITY_LOOK);
+                PacketContainer rotateBodyPacket = protocolManager.createPacket(PacketType.Play.Server.ENTITY_LOOK);
                 rotateBodyPacket.getIntegers().write(0, entityIdUUIDMap.get(p.getUniqueId()).get(i));
                 if (p.getVehicle() != null && p.getVehicle() instanceof Boat) {
                     rotateBodyPacket.getBytes().write(0, (byte) (p.getVehicle().getLocation().getYaw() * 256 / 360));
@@ -176,23 +150,12 @@ public class MountHandler {
                 }
                 rotateBodyPacket.getBytes().write(1, (byte) 0);
 
-                try {
-                    protocolManager.sendServerPacket(p, rotateHeadPacket);
-                    protocolManager.sendServerPacket(p, rotateBodyPacket);
-                    for (Entity target : p.getNearbyEntities(32, 32, 32)) {
-                        if (target instanceof Player) {
-                            protocolManager.sendServerPacket((Player) target, rotateHeadPacket);
-                            protocolManager.sendServerPacket((Player) target, rotateBodyPacket);
-                        }
-                    }
-                } catch (InvocationTargetException e) {
-                    e.printStackTrace();
-                }
+                p.sendMessage(p.getName() + " orient");
+                protocolManager.broadcastServerPacket(rotateHeadPacket, p.getLocation(), ConfigData.orientRadius);
+                protocolManager.broadcastServerPacket(rotateBodyPacket, p.getLocation(), ConfigData.orientRadius);
             }
-
-
         } else {
-            generateMount(p);
+            regenerateMount(p);
         }
     }
 }

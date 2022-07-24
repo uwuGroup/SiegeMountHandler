@@ -11,6 +11,6 @@ permissions:
     description: 'Gives access to all admin commands for SiegeMountHandler'
     children:
       siegemounthandler.reload: true
-softdepend: [ProtocolLib]
+depend: [ProtocolLib]
 author:
    Asakura_kukii

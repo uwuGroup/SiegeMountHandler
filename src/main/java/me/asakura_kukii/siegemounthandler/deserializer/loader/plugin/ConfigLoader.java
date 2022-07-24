@@ -21,13 +21,13 @@ public class ConfigLoader extends Loader {
     public static Constructor<ConfigData> constructor;
 
     public enum Map {
-        REFRESH_DELAY("refreshDelay", (int) 0, VerifierType.INTEGER, true);
+        REFRESH_DELAY("refreshDelay", (int) 0, VerifierType.INTEGER, true),
+        ORIENT_RADIUS("orientRadius", (int) 32, VerifierType.INTEGER, true);
 
         public String path;
         public Object o;
         public VerifierType vT;
         public boolean nE;
-
 
         Map(String path, Object o, VerifierType vT, Boolean nE) {
             this.path = path;
